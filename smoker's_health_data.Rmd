@@ -1,0 +1,463 @@
+---
+title: "Smoker's health exploratory data analysis"
+author: "Upuli Karunarathna"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning=FALSE, message=FALSE, results='hide', echo=FALSE, comment=NA}
+smoke<-read.csv("C:/Users/Ranjula/Downloads/smoking_health_data_final.csv")
+smoke
+```
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+library(tidyverse)
+```
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+# Separate the blood pressure into systolic and diastolic
+smoke[c("systolic_bp", "diastolic_bp")] <- do.call(rbind, strsplit(as.character(smoke$blood_pressure), "/"))
+
+#Remove the blood pressure column
+smoke$blood_pressure<-NULL
+# Convert to numeric
+smoke$systolic_bp <- as.numeric(smoke$systolic_bp)
+smoke$diastolic_bp <- as.numeric(smoke$diastolic_bp)
+
+#View the data set
+#view(smoke)
+```
+
+### **Introduction**<br>
+This data set provides the health conditions of both smokers and non smokers. The discription of the data set is as follows.<br>
+Age: Age of a representative in years <br>
+Sex: Gender of a representative (male, female) <br>
+current_smoker: Whether the representative is smoking or not (yes, no) <br>
+heart_rate: Heart rate of a representative <br>
+blood_pressure: Heart rate of a representative (systolic blood pressure/diastolic blood pressure) <br>
+cigs_per_day: Number of cigarettes consumed per day <br>
+chol: cholesterol level of a representative <br>
+
+##### **Checking the outliers**
+**1. For age**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(smoke, aes(y=age)) + geom_boxplot()
+boxplot.stats(smoke$age)$out
+```
+
+**2. For heart rate**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(smoke, aes(y=heart_rate)) + geom_boxplot()
+boxplot.stats(smoke$heart_rate)$out
+```
+Even though the box plot represents outliers, considering real scenarios these can not be eliminated.
+
+**3. For systolic blood pressure**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(smoke, aes(y=systolic_bp)) + geom_boxplot()
+boxplot.stats(smoke$systolic_bp)$out
+```
+##### 
++ Ditermining the value of extreme outlier
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+#for checking the maximum of the outlier(which want to remove in this case)
+max(boxplot.stats(smoke$systolic_bp)$out)
+#Replace that outlier in to NA
+smoke$systolic_bp[smoke$systolic_bp==295] <- NA
+```
+##### Since there is an extreme outlier compared to other outliers and when considering the general case also there is a rare chance of having such value.Therefore it is remved from the data set.
+
+**4. For diastolic blood pressure**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(smoke, aes(y=diastolic_bp)) + geom_boxplot()
+boxplot.stats(smoke$diastolic_bp)$out
+```
+Even though the box plot represents outliers, considering real scenarios these can not be eliminated.
+
+**5. For number of cigarettes per day**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(smoke, aes(y=cigs_per_day)) + geom_boxplot()
+boxplot.stats(smoke$cigs_per_day)$out
+
+#Replace that outlier in to NA
+smoke$cigs_per_day[smoke$cigs_per_day %in% c(60, 70)] <- NA
+```
+##### Since there are outliers indicated, those are removed from the dataset. 
+
+**6. For cholesterol level **
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(smoke, aes(y=chol)) + geom_boxplot()
+chol_outlier<-boxplot.stats(smoke$chol)$out
+chol_outlier
+```
++ Ditermining the values of extreme outliers
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+#Checking the values of top 2 outliers
+top2_outliers<-sort(chol_outlier, decreasing = TRUE)[1:2]
+top2_outliers
+#Replace them in to NA
+smoke$chol[smoke$chol %in% c(600, 696)] <- NA
+```
+##### Since there are extreme outliers compared to other outliers and when considering the general case also there is a rare chance of having such values.Therefore it is remved from the data set.
+ 
+##### **Summary of the data set**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+str(smoke)
+summary(smoke)
+```
+
+### **Composition of the sample**
+**1. For gender**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+#One qualitative variable at a time
+smoke$sex<-as.character(smoke$sex)
+gender_count<-table(smoke$sex)
+gender_percentage<-round(prop.table(gender_count)*100, 2)
+
+gender_summary <- data.frame(
+  Gender = names(gender_count),
+  Count = as.vector(gender_count),
+  Percentage = as.vector(gender_percentage)
+)
+print(gender_summary)
+```
+In this sample number of females are higher than number of males.<br>
+
+**2. For current_smoker**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+#One qualitative variable at a time
+smoker_count<-table(smoke$current_smoker)
+smoker_percentage<-round(prop.table(smoker_count)*100, 2)
+
+smoker_summary <- data.frame(
+  Smoking_status = names(smoker_count),
+  Count = as.vector(smoker_count),
+  Percentage = as.vector(smoker_percentage)
+)
+print(smoker_summary)
+```
+In this sample the number of people who do not smoke are higher than the number of people who smoke but as percentage it is approximately same.<br>
+
+**3. Smoking condition by gender**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+#Two qualitative variables at a time
+freq_table<-table(smoke$sex, smoke$current_smoker)
+cell_percentage<-round(prop.table(freq_table)*100, 2)
+#convert to data frames
+count_df<-as.data.frame(freq_table)
+percent_df<-as.data.frame(cell_percentage)
+#combine
+percent_values <- as.vector(cell_percentage)
+two_way_table<-cbind(count_df, percentage = percent_values)
+colnames(two_way_table)<-c("Gender", "Smoking status", "Count", "Percentage")
+print(two_way_table)
+```
+In this sample the number of non smoking females are higher than the number of non smoking males and the number of smoking females are lower than the number of smoking males. Majority holds the number of non smoking females in the sample.<br>
+
+### **Data Description**
+**1. For age**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+#One quantitative variable at a time
+ggplot(smoke, aes(x = age)) +
+  geom_dotplot(binwidth = 1, fill = "steelblue", dotsize = 0.15) +
+  labs(title = "Dotplot of Age", x = "Age")
+summary(smoke$age)
+```
+According to the dot plot of age, it is shown that data are symmetrically distributed and it is proved by the summary statistics because mean and median values are approximately equal.<br>
+
+**2. For heart rate**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+#One quantitative variable at a time
+ggplot(smoke, aes(x = heart_rate)) +
+  geom_dotplot(binwidth = 1, fill = "steelblue", dotsize = 0.15) +
+  labs(title = "Dotplot of heart rate", x = "heart rate")
+summary(smoke$heart_rate)
+```
+According to the dot plot of heart rate, it is shown that data are symmetrically distributed and it is proved by the summary statistics because mean and median values are approximately equal.<br>
+
+**3. For number of cigarettes per day**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+#One quantitative variable at a time
+ggplot(smoke, aes(x = cigs_per_day)) +
+  geom_dotplot(binwidth = 1, fill = "steelblue", dotsize = 0.02) +
+  labs(title = "Dotplot of number of cigarettes per day", x = "number of cigarettes per day")
+summary(smoke$cigs_per_day)
+```
+According to the dot plot of number of cigarettes, it is shown that data are asymmetrically distributed and it is positively skewed distribution. It is proved by the summary statistics because mean value is higher than median value.<br>
+
+**4. For cholesterol level**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+#One quantitative variable at a time
+ggplot(smoke, aes(x = chol)) +
+  geom_dotplot(binwidth = 1, fill = "steelblue", dotsize = 2) +
+  labs(title = "Dotplot of cholesterol level", x = "cholesterol level")
+summary(smoke$chol)
+```
+According to the dot plot of cholesterol level, it is shown that data are symmetrically distributed with mean 236 and it is proved by the summary statistics because mean and median values are approximately equal.<br>
+
+**5. For systolic blood pressure**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+#One quantitative variable at a time
+ggplot(smoke, aes(x = systolic_bp)) +
+  geom_dotplot(binwidth = 1, fill = "steelblue", dotsize = 0.7) +
+  labs(title = "Dotplot of systolic blood pressure", x = "systolic blood pressure")
+summary(smoke$systolic_bp)
+```
+According to the dot plot of systolic blood pressure, it is shown that data are asymmetrically distributed with median 128 and it is positively skewed distribution. It is proved by the summary statistics because mean value is higher than median value.<br>
+
+**6. For diastolic blood pressure**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+#One quantitative variable at a time
+ggplot(smoke, aes(x = diastolic_bp)) +
+  geom_dotplot(binwidth = 1, fill = "steelblue", dotsize = 0.2) +
+  labs(title = "Dotplot of diastolic blood pressure", x = "diastolic blood pressure")
+summary(smoke$diastolic_bp)
+```
+According to the dot plot of diastolic blood pressure, it is shown that data are symmetrically distributed with mean 83 approximately and it is proved by the summary statistics because mean and median values are approximately equal.<br>
+
+**7. For cholesterol level in terms of smoking condition**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+#One quantitative variable and a levels of one qualitative variable
+
+ggplot(smoke, aes(x = current_smoker, 
+                 y = chol)) +
+geom_dotplot(stackdir = "center",
+binaxis = "y", binwidth = 2,
+binpositions = "all",
+stackratio = 1.5,
+fill = "darkgreen", colour = "darkgreen") + labs(title = "Dotplot of cholesterol level by smoking condition", y = "cholesterol   level", x = "smoking condition")
+```
+
++ **Summary statistics of cholesterol level in terms of smoking condition (yes and no) **
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+tapply(smoke$chol, smoke$current_smoker, summary)
+```
+According to the dot plot it is shown that cholesterol level of majority is varied the range between 200 to 300 regardless the smoking condition. The distributions of cholesterol level for both smokers and non smokers are symmetric with mean 239 and 234 respectively and it is proved by the summary statistics because the mean and median values are approximately equal for each smoking condition.<br>
+
+**8. For heart rates in terms of smoking condition**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(smoke, aes(x = current_smoker, 
+                 y = heart_rate)) +
+geom_dotplot(stackdir = "center",
+binaxis = "y", binwidth = 0.2,
+binpositions = "all",
+stackratio = 1.5,
+fill = "darkgreen", colour = "darkgreen") + labs(title = "Dotplot of heart rate by smoking condition", y = "heart rate", x = "smoking condition")
+```
+
++ **Summary statistics of heart rate in terms of smoking condition (yes and no) **
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+tapply(smoke$heart_rate, smoke$current_smoker, summary)
+```
+According to the dot plot it is shown that the maximum heart rate indicated at 75, regardless the smoking condition. The distributions of heart rate for both smoking conditions are symmetric and it is proved by the summary statistics because the mean and median values are approximately equal for each smoking condition.<br>
+
+**9. For systolic blood pressure in terms of smoking condition**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(smoke, aes(x = current_smoker, 
+                 y = systolic_bp)) +
+geom_dotplot(stackdir = "center",
+binaxis = "y", binwidth = 1,
+binpositions = "all",
+stackratio = 1.5,
+fill = "darkgreen", colour = "darkgreen") + labs(title = "Dotplot of systolic blood pressure by smoking condition", y = "systolic blood pressure", x = "smoking condition")
+```
+
++ **Summary statistics of systolic blood pressure in terms of smoking condition (yes and no) **
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+tapply(smoke$systolic_bp, smoke$current_smoker, summary)
+```
+According to the dot plot it is shown that systolic blood pressure of majority is varied in the range between 100 to 150, regardless the smoking condition. The distributions of  systolic blood pressure for both smokers and non smokers are slightly right skewed with median 131 and 126 respectively and it is proved by the summary statistics because the mean is higher than the median value for each smoking condition.<br>
+
+**10. For diastolic blood pressure in terms of smoking condition**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(smoke, aes(x = current_smoker, 
+                 y = diastolic_bp)) +
+geom_dotplot(stackdir = "center",
+binaxis = "y", binwidth = .45,
+binpositions = "all",
+stackratio = 1.5,
+fill = "darkgreen", colour = "darkgreen") + labs(title = "Dotplot of diastolic blood pressure by smoking condition", y = "diastolic blood pressure", x = "smoking condition")
+```
+
++ **Summary statistics of diastolic blood pressure in terms of smoking condition (yes and no) **
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+tapply(smoke$diastolic_bp, smoke$current_smoker, summary)
+```
+According to the dot plot it is shown that diastolic blood pressure of majority is varied the range between approximately 70 to 100 regardless the smoking condition. The distributions of cholesterol level for both smoking conditions are symmetric and it is proved by the summary statistics because the mean and median values are approximately equal for each smoking condition.<br>
+
+**11. For heart rate in terms of gender**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(smoke, aes(x = sex, 
+                 y = heart_rate)) +
+geom_dotplot(stackdir = "center",
+binaxis = "y", binwidth = 0.2,
+binpositions = "all",
+stackratio = 1.5,
+fill = "darkred", colour = "darkred") + labs(title = "Dotplot of heart rate by gender", y = "heart rate", x = "gender")
+```
+
++ **Summary statistics of heart rate in terms of gender (male and female) **
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+tapply(smoke$heart_rate, smoke$sex, summary)
+```
+According to the dot plot it is shown that heart rate of majority is varied the range between approximately 60 to 80 regardless the gender. The distributions of cholesterol level for both genders are symmetric and it is proved by the summary statistics because the mean and median values are approximately equal for both males and females.<br>
+
+**12. For cholesterol level in terms of gender**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+
+ggplot(smoke, aes(x = sex, 
+                 y = chol)) +
+geom_dotplot(stackdir = "center",
+binaxis = "y", binwidth = 2.25,
+binpositions = "all",
+stackratio = 1.5,
+fill = "darkred", colour = "darkred") + labs(title = "Dotplot of cholesterol level by gender", y = "cholesterol   level", x = "gender")
+```
+
++ **Summary statistics of cholesterol level in terms of gender (male and female)**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+tapply(smoke$chol, smoke$sex,summary)
+```
+According to the dot plot it is shown that cholesterol level of majority is varied the range between approximately 200 to 300 regardless the gender. The distributions of cholesterol level for both genders are symmetric and it is proved by the summary statistics because the mean and median values are approximately equal for both males and females.<br>
+
+**13. For systolic blood pressure in terms of gender**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(smoke, aes(x = sex, 
+                 y = systolic_bp)) +
+geom_dotplot(stackdir = "center",
+binaxis = "y", binwidth = 1,
+binpositions = "all",
+stackratio = 1.5,
+fill = "darkred", colour = "darkred") + labs(title = "Dotplot of systolic blood pressure by gender", y = "systolic blood pressure", x = "gender")
+```
+
++ **Summary statistics of systolic blood pressure in terms of gender (male and female) **
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+tapply(smoke$systolic_bp, smoke$sex, summary)
+```
+According to the dot plot it is shown that systolic blood pressure of majority is varied the range between approximately 100 to 150 regardless the gender. The distributions of systolic blood pressure for both genders are positively skewed and it is proved by the summary statistics because the mean value is higher than the median value for both males and females.<br>
+
+**14.For diastolic blood pressure in terms of gender**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(smoke, aes(x = sex, 
+                 y = diastolic_bp)) +
+geom_dotplot(stackdir = "center",
+binaxis = "y", binwidth = .45,
+binpositions = "all",
+stackratio = 1.5,
+fill = "darkred", colour = "darkred") + labs(title = "Dotplot of diastolic blood pressure by gender", y = "diastolic blood pressure", x = "gender")
+```
+
++ **Summary statistics of diastolic blood pressure in terms of gender (male and female) **
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+tapply(smoke$diastolic_bp, smoke$sex, summary)
+```
+According to the dot plot it is shown that diastolic blood pressure of majority is varied the range between approximately 65 to 85 regardless the gender. The distributions of diastolic blood pressure for both genders are symmetric and it is proved by the summary statistics because the mean and median values are equal for both males and females.<br>
+
+**15. For number of consuming cigarettes per day in terms of gender**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(smoke, aes(x = sex, 
+                 y = cigs_per_day)) +
+geom_dotplot(stackdir = "center",
+binaxis = "y", binwidth = 0.03,
+binpositions = "all",
+stackratio = 1,
+fill = "darkred", colour = "darkred") + labs(title = "Dotplot of consuming number of cigarettes per day by gender", y = "number of cigarettes per day", x = "gender")
+```
+
++ **Summary statistics of number of consuming cigarettes per day in terms of gender (male and female) **
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+tapply(smoke$cigs_per_day, smoke$sex, summary)
+```
+According to the dot plot it is shown that maximum number of people are non smokers regardless the gender. The distribution of number of consuming cigarettes per day for females is positively skewed and it is proved by the summary statistics because the mean value is higher than the median value. The distribution of number of consuming cigarettes per day for males is symmetric and it is proved by the summary statistics because the mean and median values are approximately equal. <br>
+
+**16.For age vs number of consuming cigarettes per day according to gender**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(data= smoke, aes(x=age, y= cigs_per_day)) +
+  geom_point(color = "darkblue", size = 1,alpha = 1) + facet_wrap(~sex) + geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(title = "Scatter plot of age vs cigarettes per day", x = "Age", y = "cigarettes per day")
+```
+
+**17.For cholesterol level vs number of consuming cigarettes per day**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(data= smoke, aes(y=chol, x= cigs_per_day)) +
+  geom_point(color = "darkblue", size = 1,alpha = 1) + geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(title = "Scatter plot of cholesterol level vs number of consuming cigarettes per day", y = "cholesterol level", x = "cigarettes per day")
+```
+
+**18. For systolic blood pressure vs number of consuming cigarettes per day**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(data= smoke, aes(y=systolic_bp, x= cigs_per_day)) +
+  geom_point(color = "darkblue", size = 1,alpha = 1) + geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(title = "Scatter plot systolic blood pressure vs number of consuming cigarettes per day", y = "systolic blood pressure", x = "cigarettes per day")
+```
+
+**19.. For diastolic blood pressure vs number of consuming cigarettes per day**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(data= smoke, aes(y=diastolic_bp, x= cigs_per_day)) +
+  geom_point(color = "darkblue", size = 1,alpha = 1) + geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(title = "Scatter plot of diastolic blood pressure vs number of consuming cigarettes per day", y = "diastolic blood pressure", x = "cigarettes per day")
+```
+
+There are negative, weak relationships between age and number of consuming cigarettes per day among both males and females, cholesterol level and number of consuming cigarettes per day, systolic blood pressure and number of consuming cigarettes per day, diastolic blood pressure and number of consuming cigarettes per day.While there is a slight downward trend, the large spread of points indicates a weak association.<br>
+
+**20. For heart rate vs cholesterol level**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(data= smoke, aes(y=heart_rate, x= chol)) +
+  geom_point(color = "darkblue", size = 1,alpha = 1) + geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(title = "Scatter plot of heart rate vs cholesterol level ", y = "heart rate", x = "cholesterol level")
+```
+
+**21. For heart rate vs number of consuming cigarettes per day**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(data= smoke, aes(y=heart_rate, x= cigs_per_day)) +
+  geom_point(color = "darkblue", size = 1,alpha = 1) + geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(title = "Scatter plot of heart rate vs number of consuming cigarettes per day", y = "heart rate", x = "cigarettes per day")
+```
+
+**22. For heart rate vs systolic blood pressure**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(data= smoke, aes(y=heart_rate, x= systolic_bp)) +
+  geom_point(color = "darkblue", size = 1,alpha = 1) + geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(title = "Scatter plot of heart rate vs systolic blood pressure", y = "heart rate", x = "systolic blood pressure")
+```
+
+**23.For heart rate vs diastolic blood pressure**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+ggplot(data= smoke, aes(y=heart_rate, x= diastolic_bp)) +
+  geom_point(color = "darkblue", size = 1,alpha = 1) + geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(title = "Scatter plot of heart rate vs diastolic blood pressure", y = "heart rate", x = "diastolic blood pressure")
+```
+
+There are weak, positive relationships between heart rate vs cholesterol level, heart rate and number of consuming cigarettes per day, heart rate and systolic blood pressure, heart rate vs diastolic blood pressure.While there is a slight upward trend, the large spread of points indicates a weak association.
+
+**24. Correlation between two quantitative variables**
+```{r,echo=FALSE,warning=FALSE,message=FALSE,comment=NA}
+library(GGally)
+scatter_matrix <- ggpairs(smoke, columns =c("age", "heart_rate","cigs_per_day", "chol","systolic_bp","diastolic_bp"),
+                          axisLabels = "show")
+scatter_matrix
+```
+
+Above chart shows the correlation between two quantitative variables which discussed in this study. Both positive and negative relationships are occurred but all of them are not strong relationships except the relationship between systolic blood pressure and diastolic blood pressure because it as a strong, positive relationship.<br> There are weak, negative relationships between age and heart rate, age and cigarettes consumed per day, cholesterol level and and cigarettes consumed per day, systolic blood pressure and cigarettes consumed per day, diastolic blood pressure and cigarettes consumed per day.<br>
+There are weak, positive relationships between cholesterol level and age, systolic blood pressure and age, diastolic blood pressure and age, cigarettes consumed per day and heart rate, cholesterol level and heart rate, systolic blood pressure and heart rate, diastolic blood pressure and heart rate, systolic blood pressure and cholesterol level, diastolic blood pressure and cholesterol level. 
+
+### **Discussion**<br>
+1. In the original data set both systolic and diastolic blood pressures were indicated together as blood pressure. But for the convenience of analysis it was separated as two quantitative variables.
+2. All the outliers indicated by the box plot are not removed because some of can be happened in real scenarios. But some outliers are eliminated because they indicate as extreme outliers and show less number of outliers separately.<br>
+3. Removed outliers are taken as null values.<br>
+4. Missing values of categorical variables are also assigned as null values.<br>
+5. Since the data points are not scattered perfectly, a smooth line is used to detect the trend.<br>
+6. The data may contain variability due to measurement error, unmeasured confounding variables, or differences in participant health status.<br>
+
+### **Conclusions**<br>
+1. Number of females are higher than number of males but number of smoking males are higher than number of smoking females. <br>
+2. The average cholesterol level in the data set is around 236 mg/dL, which is relatively high compared to the commonly recommended healthy range. <br>
+3. Average heart rate does not significantly vary with respect to the smoking condition.<br>
+4. The magnitude of correlation coefficients are not close to one and that means there are no strong relationships among quantitative variables except the relationship between systolic blood pressure and diastolic blood pressure. <br>
+5. Systolic blood pressure and diastolic blood pressure are declined when the daily cigarette consumption is increasing. <br>
+6. Heart rate and cholesterol level is increasing when the daily cigarette consumption is increasing. <br>
+7. Heart rate is increased when Systolic blood pressure and diastolic blood pressure are increased. <br>
